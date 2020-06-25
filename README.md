@@ -21,6 +21,6 @@ go run main.go "path/to/icon/dot/url/file"
 Example:
 
 ```bash
-go run main.go "C:\Users\novalagung\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Assassin's Creed Origins.url"
+go run main.go "D:\some\path\of\Assassin's Creed Origins.url"
   => result: executable "Assassin's Creed Origins.exe" is successfully generated
 ```

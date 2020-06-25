@@ -1,6 +1,10 @@
-# Windows Shortcut File To Exe Converter
+# Shortcut File To Exe Converter
 
-This lib is used to convert shortcut file (`.url`) to executable (`.exe`) easily.
+This lib is used to convert shortcut file to executable file easily.
+
+Supported file types:
+    - `.lnk`, `.url`, or `.cda` files; will become `.exe` file
+    - `.desktop` will become `.sh` file
 
 ### How to run
 

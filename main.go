@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,16 +16,16 @@ import (
 	"strings"
 )
 
-// this var used to store the shortcut file path, taken from argument during `go run`
+// this var used to store the shortcut file path,
+// taken from argument during `go run`
 var shortcutFilePath = ""
 
-// these vars below will have values injected during build time, for .exe creation
+// these vars below will have values injected during build time
 var isRuntime = ""
-var url = ""
-var icon = ""
-
-// this var below will be used to store the bash script command, for .sh creation
-var bashScriptCommand = ""
+var osName = ""
+var url = ""               // during .exe creation
+var icon = ""              // during .exe creation
+var bashScriptCommand = "" // during linux/unix/mac executable file creation
 
 func main() {
 
@@ -38,8 +39,11 @@ func main() {
 
 // exec url/file
 func runExecutable() {
-	err := exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	forceExitIfError(err)
+	if osName == "windows" {
+		execCommand("rundll32", "url.dll,FileProtocolHandler", url)
+	} else {
+		execCommand(bashScriptCommand)
+	}
 }
 
 // build dot exe file
@@ -56,7 +60,7 @@ func buildExecutable() {
 	if fileExt == ".lnk" || fileExt == ".url" || fileExt == ".cda" {
 		filename = filename[0:len(filename)-len(fileExt)] + ".exe"
 	} else if fileExt == ".desktop" {
-		filename = filename[0:len(filename)-len(fileExt)] + ".sh"
+		filename = filename[0 : len(filename)-len(fileExt)]
 		shouldBecomeDotExe = false
 	} else {
 		forceExitIfError("unsupported file. file must be one of these: .lnk, .url, .cda, .desktop")
@@ -67,7 +71,7 @@ func buildExecutable() {
 
 	// build the executable
 	//   => .lnk, .url, .cda will be converted into .exe
-	//   => .desktop will be converted into .sh
+	//   => .desktop will be converted into linux/unix/mac executable file
 	if shouldBecomeDotExe {
 
 		// fail if gopath is not set
@@ -86,31 +90,36 @@ func buildExecutable() {
 		}
 
 		// go get the rsrc lib
-		execCommand([]string{"go", "get", "github.com/akavel/rsrc"})
+		execCommand("go", "get", "github.com/akavel/rsrc")
 
 		// create the rsrc.syso to set the icon of upcoming executable
 		gopath := os.Getenv("GOPATH")
 		rsrcFilename := "rsrc.syso"
 		rsrcExecFile := filepath.Join(gopath, "bin", strings.Split(rsrcFilename, ".")[0])
-		execCommand([]string{rsrcExecFile, "-ico", icon})
+		execCommand(rsrcExecFile, "-ico", icon)
 
 		// remove existing file
 		os.Remove(filename)
 
 		// build the .exe file
-		execCommand([]string{
+		execCommand(
 			"go",
 			"build",
-			"-ldflags", fmt.Sprintf(`-X "main.isRuntime=true" -X "main.url=%s" -X "main.icon=%s"`, url, icon),
+			"-ldflags", fmt.Sprintf(`-X "main.isRuntime=true" -X "main.osName=%s" -X "main.url=%s" -X "main.icon=%s"`, runtime.GOOS, url, icon),
 			"-o", filename,
-		})
+		)
 
 		// remove syso file
 		os.Remove(rsrcFilename)
 	} else {
-		content := []byte(fmt.Sprintf("#!/bin/sh\n\n%s", bashScriptCommand))
-		err := ioutil.WriteFile(filename, content, os.ModePerm)
-		forceExitIfError(err)
+
+		// build the executable file
+		execCommand(
+			"go",
+			"build",
+			"-ldflags", fmt.Sprintf(`-X "main.isRuntime=true" -X "main.osName=%s" -X "main.bashScriptCommand=%s"`, runtime.GOOS, url, bashScriptCommand),
+			"-o", filename,
+		)
 	}
 
 	fmt.Printf("  => result: executable %s is successfully generated", filename)
@@ -160,13 +169,14 @@ func forceExitIfError(message interface{}) {
 	os.Exit(0)
 }
 
-func execCommand(command []string) {
+func execCommand(command ...string) {
 	if runtime.GOOS == "windows" {
 		command = append([]string{"cmd", "/C"}, command...)
 	} else {
 		command = append([]string{"/bin/sh", "-c"}, command...)
 	}
 
+	log.Println(strings.Join(command, " "))
 	cmd := exec.Command(command[0], command[1:]...)
 	var out bytes.Buffer
 	var stderr bytes.Buffer

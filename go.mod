@@ -1,4 +1,4 @@
-module shortcut2exe
+module github.com/kalipare/shortcut2exe
 
 go 1.14
 

@@ -89,14 +89,23 @@ func buildExecutable() {
 			forceExitIfError("the git binary is required to be added into PATH env var")
 		}
 
-		// go get the rsrc lib
-		execCommand("go", "get", "github.com/akavel/rsrc")
+		iconFlags := ""
+		if icon != "" {
+			// go get the rsrc lib
+			execCommand("go", "install", "github.com/akavel/rsrc")
 
-		// create the rsrc.syso to set the icon of upcoming executable
-		gopath := os.Getenv("GOPATH")
-		rsrcFilename := "rsrc.syso"
-		rsrcExecFile := filepath.Join(gopath, "bin", strings.Split(rsrcFilename, ".")[0])
-		execCommand(rsrcExecFile, "-ico", icon)
+			// create the rsrc.syso to set the icon of upcoming executable
+			gopath := os.Getenv("GOPATH")
+			rsrcFilename := "rsrc.syso"
+			rsrcExecFile := filepath.Join(gopath, "bin", strings.Split(rsrcFilename, ".")[0])
+			execCommand(rsrcExecFile, "-ico", icon)
+
+			// remove syso file later
+			defer os.Remove(rsrcFilename)
+
+			// set ldflags
+			iconFlags = fmt.Sprintf(` -X "main.icon=%s"`, icon)
+		}
 
 		// remove existing file
 		os.Remove(filename)
@@ -105,12 +114,9 @@ func buildExecutable() {
 		execCommand(
 			"go",
 			"build",
-			"-ldflags", fmt.Sprintf(`-X "main.isRuntime=true" -X "main.osName=%s" -X "main.url=%s" -X "main.icon=%s"`, runtime.GOOS, url, icon),
+			"-ldflags", fmt.Sprintf(`-X "main.isRuntime=true" -X "main.osName=%s" -X "main.url=%s"`, runtime.GOOS, url)+iconFlags,
 			"-o", filename,
 		)
-
-		// remove syso file
-		os.Remove(rsrcFilename)
 	} else {
 
 		// build the executable file

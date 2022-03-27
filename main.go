@@ -90,7 +90,7 @@ func buildExecutable() {
 		}
 
 		// go get the rsrc lib
-		execCommand("go", "get", "github.com/akavel/rsrc")
+		execCommand("go", "install", "github.com/akavel/rsrc")
 
 		// create the rsrc.syso to set the icon of upcoming executable
 		gopath := os.Getenv("GOPATH")
